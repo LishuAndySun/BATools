@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const { calculate } = require('../static/level-calculator.js');
+const { cloneRules } = require('../static/game-rules.js');
 
 const rules = { apRecoveryMinutes: 6, expTable: { 1: 100, 2: 120, 3: 150, 4: 200 } };
 const base = { currentLevel: 1, currentExp: 0, targetLevel: 3, currentAp: 100, apCap: 120, expPerAp: 1 };
@@ -25,4 +26,9 @@ assert.match(calculate({ ...base, currentExp: '' }, rules).error, /完整/);
 assert.match(calculate({ ...base, currentLevel: -1 }, rules).error, /正整数/);
 assert.match(calculate({ ...base, currentAp: 121 }, rules).error, /超过/);
 assert.match(calculate({ ...base, expPerAp: 0 }, rules).error, /大于 0/);
+
+const builtInRules = cloneRules();
+assert.equal(Object.keys(builtInRules.expTable).length, 89);
+assert.equal(builtInRules.expTable[89], 26770);
+assert.equal(calculate({ ...base, currentLevel: 1, currentExp: 0, targetLevel: 3, expPerAp: 1 }, builtInRules).requiredExp, 18);
 console.log('level calculator tests passed');

@@ -71,7 +71,7 @@
 
   function loadRules() {
     const saved = loadStored(rulesStorageKey);
-    return saved && typeof saved === "object" ? { ...defaultRules, ...saved, expTable: { ...(saved.expTable || {}) } } : defaultRules;
+    return saved && typeof saved === "object" ? { ...defaultRules, ...saved, expTable: { ...defaultRules.expTable, ...(saved.expTable || {}) } } : defaultRules;
   }
 
   function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
@@ -226,8 +226,8 @@
     event.preventDefault();
     const points = Number(elements.points.value);
     const cap = Number(elements.cap.value);
-    if (!elements.points.value.trim() || !elements.cap.value.trim() || !Number.isInteger(points) || points < 0 || !Number.isInteger(cap) || cap < 0 || points > cap) {
-      elements.error.textContent = "请输入不小于 0 的整数，且当前行动点不能超过上限。";
+    if (!elements.points.value.trim() || !elements.cap.value.trim() || !Number.isInteger(points) || points < 0 || !Number.isInteger(cap) || cap < 0) {
+      elements.error.textContent = "请输入不小于 0 的整数。";
       return;
     }
     state = { recordedPoints: points, cap, recordedAt: new Date(elements.recordedAt.value).getTime() };

@@ -12,9 +12,13 @@ assert.deepEqual(calculate({ recordedPoints: 10, cap: 100, recordedAt, now: reco
 assert.equal(calculate({ recordedPoints: 10, cap: 100, recordedAt, now: recordedAt + 5 * minute }).recovered, 0);
 assert.equal(calculate({ recordedPoints: 10, cap: 12, recordedAt, now: recordedAt + 60 * minute }).currentPoints, 12);
 assert.equal(calculate({ recordedPoints: 12, cap: 12, recordedAt, now: recordedAt + 60 * minute }).atCap, true);
+assert.deepEqual(calculate({ recordedPoints: 889, cap: 204, recordedAt, now: recordedAt + 60 * minute }), {
+  valid: true, recordedPoints: 889, recordedAt, cap: 204, recovered: 0, currentPoints: 889,
+  atCap: true, elapsedMs: 60 * minute, nextRecoveryAt: null, remainingMs: 0, progress: 1,
+});
 assert.equal(calculate({ recordedPoints: 10, cap: 100, recordedAt, now: recordedAt - minute }).remainingMs, 6 * minute);
 assert.equal(calculate({ recordedPoints: -1, cap: 100, recordedAt, now: recordedAt }).valid, false);
-assert.equal(calculate({ recordedPoints: 101, cap: 100, recordedAt, now: recordedAt }).valid, false);
+assert.equal(calculate({ recordedPoints: -1, cap: 100, recordedAt, now: recordedAt }).valid, false);
 assert.equal(calculate({ recordedPoints: 1.5, cap: 100, recordedAt, now: recordedAt }).valid, false);
 assert.equal(calculate({ recordedPoints: 1, cap: 'bad', recordedAt, now: recordedAt }).valid, false);
 console.log('calculator tests passed');

@@ -18,15 +18,15 @@
     return cap !== null && cap >= 0 ? Math.floor(cap) : null;
   }
 
-  function normalizePoints(value, cap) {
+  function normalizePoints(value) {
     const points = finiteNumber(value);
-    if (points === null || !Number.isInteger(points) || points < 0 || cap === null || points > cap) return null;
+    if (points === null || !Number.isInteger(points) || points < 0) return null;
     return points;
   }
 
   function calculate({ recordedPoints, recordedAt, cap = DEFAULT_CAP, now = Date.now() }) {
     const normalizedCap = normalizeCap(cap);
-    const points = normalizePoints(recordedPoints, normalizedCap);
+    const points = normalizePoints(recordedPoints);
     const start = finiteNumber(recordedAt);
     const currentTime = finiteNumber(now);
     if (normalizedCap === null || points === null || start === null || currentTime === null || start < 0) {
@@ -35,7 +35,7 @@
 
     const safeNow = Math.max(currentTime, start);
     const elapsedMs = safeNow - start;
-    const available = normalizedCap - points;
+    const available = Math.max(0, normalizedCap - points);
     const recovered = Math.min(available, Math.floor(elapsedMs / RECOVERY_INTERVAL_MS));
     const currentPoints = points + recovered;
     const atCap = currentPoints >= normalizedCap;
@@ -55,7 +55,7 @@
       elapsedMs,
       nextRecoveryAt,
       remainingMs,
-      progress: normalizedCap === 0 ? 1 : currentPoints / normalizedCap,
+      progress: normalizedCap === 0 ? 1 : Math.min(1, currentPoints / normalizedCap),
     };
   }
 
