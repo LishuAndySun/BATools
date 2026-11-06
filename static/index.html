@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a43">
+  <title>行动点工具箱</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BLUE ARCHIVE · LOCAL TOOLBOX</p>
+        <h1>行动点计算器</h1>
+      </div>
+      <div class="live-chip"><span class="live-dot"></span>本地运行</div>
+    </header>
+
+    <section class="intro" aria-labelledby="intro-title">
+      <div>
+        <p class="section-kicker">自然恢复监测</p>
+        <h2 id="intro-title">把下一点行动力的时间算清楚。</h2>
+        <p class="intro-copy">每 6 分钟恢复 1 点。数据只保存在当前浏览器，不会上传到服务器。</p>
+      </div>
+      <div class="rule-badge"><strong>1 AP</strong><span>每 6 分钟</span></div>
+    </section>
+
+    <section class="workspace" aria-label="行动点工具">
+      <form class="panel input-panel" id="point-form">
+        <div class="panel-heading">
+          <div><p class="section-kicker">记录状态</p><h2>输入当前数据</h2></div>
+          <span class="step-label">01</span>
+        </div>
+        <label for="points">当前行动点</label>
+        <div class="input-wrap"><input id="points" name="points" type="number" min="0" step="1" inputmode="numeric" required><span>AP</span></div>
+        <label for="cap">行动点上限</label>
+        <div class="input-wrap"><input id="cap" name="cap" type="number" min="0" step="1" inputmode="numeric" value="999" required><span>AP</span></div>
+        <label for="recorded-at">行动点记录时间</label>
+        <input id="recorded-at" name="recordedAt" type="datetime-local" required>
+        <p class="field-error" id="form-error" role="alert"></p>
+        <button class="primary-button" type="submit"><span>现在更新 / 重新记录</span><span aria-hidden="true">→</span></button>
+        <p class="form-note">行动点发生变化后重新记录，计时会从此刻重新开始。</p>
+      </form>
+
+      <section class="panel result-panel" aria-live="polite">
+        <div class="panel-heading">
+          <div><p class="section-kicker">实时预测</p><h2>恢复进度</h2></div>
+          <span class="step-label accent">02</span>
+        </div>
+        <div class="result-hero"><span class="result-label">预计当前行动点</span><strong id="current-points">--</strong><span class="result-unit">AP</span></div>
+        <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
+        <div class="result-grid">
+          <div><span>已恢复</span><strong id="recovered">--</strong></div>
+          <div><span>距离下一点</span><strong id="countdown">--</strong></div>
+          <div><span>下一点时间</span><strong id="next-time">--</strong></div>
+          <div><span>当前上限</span><strong id="current-cap">--</strong></div>
+        </div>
+        <div id="cap-message" class="status-message hidden"></div>
+        <div id="alert-message" class="alert-message hidden" role="status"></div>
+      </section>
+    </section>
+
+    <section class="notifications panel" aria-labelledby="notification-title">
+      <div class="notification-copy"><p class="section-kicker">恢复提醒</p><h2 id="notification-title">不必盯着页面</h2><p id="notification-status">浏览器通知尚未启用。局域网 HTTP 可能限制通知权限，页面内提醒仍会工作。</p></div>
+      <button id="notification-button" class="secondary-button" type="button">启用通知</button>
+    </section>
+
+    <footer><span>自然恢复：每小时 10 点</span><span>行动点工具箱 · v1</span></footer>
+  </main>
+  <script src="/calculator.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
