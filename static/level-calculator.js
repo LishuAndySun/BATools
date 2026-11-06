@@ -27,7 +27,6 @@
     if (experience < 0 || ap < 0 || cap < 0) return "经验值和行动点不能为负数。";
     if (current > target) return "目标等级不能低于当前等级。";
     if (experience < 0) return "当前经验不能为负数。";
-    if (ap > cap) return "当前行动点不能超过行动点上限。";
     if (perAp <= 0) return "每 AP 获得经验必须大于 0。";
     return null;
   }
@@ -71,11 +70,19 @@
     }
     const requiredAp = Math.ceil(requiredExp / expPerAp);
     const waitAp = Math.max(0, requiredAp - currentAp);
+    const paused = rules && rules.isOperating === false && waitAp > 0;
+    if (paused) {
+      return {
+        valid: true, reached: false, currentLevel, targetLevel, currentExp, currentLevelXp,
+        remainingCurrentLevel, requiredExp, requiredAp, currentAp, apCap, expPerAp, waitAp,
+        waitMs: null, canPayNow: false, needsMultipleRuns: currentAp < requiredAp && requiredAp > apCap, paused,
+      };
+    }
     const waitMs = waitAp * rules.apRecoveryMinutes * 60 * 1000;
     return {
       valid: true, reached: false, currentLevel, targetLevel, currentExp, currentLevelXp,
       remainingCurrentLevel, requiredExp, requiredAp, currentAp, apCap, expPerAp, waitAp, waitMs,
-      canPayNow: currentAp >= requiredAp, needsMultipleRuns: requiredAp > apCap,
+      canPayNow: currentAp >= requiredAp, needsMultipleRuns: currentAp < requiredAp && requiredAp > apCap,
     };
   }
 

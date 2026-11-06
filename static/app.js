@@ -5,6 +5,8 @@
   const storageKey = "ba-action-point-state";
   const levelStorageKey = "ba-level-target-state";
   const rulesStorageKey = "ba-game-rules";
+  const cafeStorageKey = "ba-cafe-state";
+  const cafeDefaults = { rank: 1, comfort: 1000, isOperating: true, changedAt: Date.now() };
   const elements = {
     form: document.querySelector("#point-form"),
     points: document.querySelector("#points"),
@@ -21,6 +23,15 @@
     alert: document.querySelector("#alert-message"),
     notifyButton: document.querySelector("#notification-button"),
     notifyStatus: document.querySelector("#notification-status"),
+    cafeForm: document.querySelector("#cafe-form"),
+    cafeRank: document.querySelector("#cafe-rank"),
+    cafeComfort: document.querySelector("#cafe-comfort"),
+    cafeRate: document.querySelector("#cafe-rate"),
+    cafeComfortLimit: document.querySelector("#cafe-comfort-limit"),
+    cafeCap: document.querySelector("#cafe-cap"),
+    cafeRateBadge: document.querySelector("#cafe-rate-badge"),
+    cafeOperating: document.querySelector("#cafe-operating"),
+    cafeStatus: document.querySelector("#cafe-status"),
     levelForm: document.querySelector("#level-form"),
     levelCurrent: document.querySelector("#level-current"),
     levelExp: document.querySelector("#level-exp"),
@@ -48,6 +59,8 @@
   };
   let state = loadState();
   let levelState = loadStored(levelStorageKey);
+  let cafeState = { ...cafeDefaults, ...(loadStored(cafeStorageKey) || {}) };
+  if (!Number.isFinite(cafeState.changedAt)) cafeState.changedAt = Date.now();
   let rules = loadRules();
   let lastReminderAt = null;
   let titleTimer = null;
@@ -77,6 +90,44 @@
   function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
   function saveLevelState() { localStorage.setItem(levelStorageKey, JSON.stringify(levelState)); }
   function saveRules() { localStorage.setItem(rulesStorageKey, JSON.stringify(rules)); }
+  function saveCafeState() { localStorage.setItem(cafeStorageKey, JSON.stringify(cafeState)); }
+
+  function currentCafeProduction() {
+    return window.GameRules.cafeProduction(cafeState.rank, cafeState.comfort);
+  }
+
+  function applyCafeSettings() {
+    const production = currentCafeProduction();
+    if (!production) return;
+    elements.cafeRate.textContent = `${production.apPerHour.toFixed(2)} AP/hr`;
+    elements.cafeRateBadge.textContent = `${production.apPerHour.toFixed(2)}`;
+    elements.cafeComfortLimit.textContent = `${production.maxComfort}`;
+    elements.cafeCap.textContent = `${production.apCap} AP`;
+    elements.cafeOperating.checked = cafeState.isOperating;
+    elements.cap.value = production.apCap;
+    elements.levelCap.value = production.apCap;
+    rules.apRecoveryMinutes = 60 / production.apPerHour;
+    rules.isOperating = cafeState.isOperating;
+    updateCafeStatus();
+    render();
+    renderLevel();
+  }
+
+  function updateCafeStatus() {
+    if (!state) {
+      elements.cafeStatus.textContent = cafeState.isOperating ? "营业中，提交行动点记录后开始计算收入。" : "暂停营业，不会产生行动点。";
+      return;
+    }
+    const production = currentCafeProduction();
+    const result = calculator.calculate({ ...state, cap: production.apCap, apPerHour: production.apPerHour, isOperating: cafeState.isOperating, now: Date.now() });
+    if (result.atCap) {
+      elements.cafeStatus.textContent = "行动点已达到储存上限，收入自动暂停；消耗行动点后会按当前营业状态恢复。";
+    } else if (result.paused) {
+      elements.cafeStatus.textContent = "已暂停营业，不会产生行动点。打开营业开关后开始恢复。";
+    } else {
+      elements.cafeStatus.textContent = `营业中，最近状态更新时间：${formatDate(cafeState.changedAt)}`;
+    }
+  }
 
   function formatDuration(milliseconds) {
     const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -101,21 +152,23 @@
 
   function render() {
     if (!state) { renderEmpty(); return; }
-    const result = calculator.calculate({ ...state, now: Date.now() });
+    const production = currentCafeProduction();
+    const result = calculator.calculate({ ...state, cap: production.apCap, apPerHour: production.apPerHour, isOperating: cafeState.isOperating, now: Date.now() });
     if (!result.valid) { renderEmpty(); elements.error.textContent = result.error; return; }
     elements.current.textContent = result.currentPoints;
     elements.recovered.textContent = `+${result.recovered}`;
-    elements.currentCap.textContent = result.cap;
+    elements.currentCap.textContent = `${result.cap} (${result.apPerHour.toFixed(2)} AP/hr)`;
     elements.progress.style.width = `${Math.min(100, result.progress * 100)}%`;
-    elements.countdown.textContent = result.atCap ? "已达上限" : formatDuration(result.remainingMs);
-    elements.nextTime.textContent = result.atCap ? "暂停恢复" : formatDate(result.nextRecoveryAt);
-    elements.capMessage.classList.toggle("hidden", !result.atCap);
-    elements.capMessage.textContent = result.atCap ? "行动点已达到上限，计时已暂停。重新记录后会开始新的预测。" : "";
+    elements.countdown.textContent = result.atCap ? "已达上限" : result.paused ? "暂停营业" : formatDuration(result.remainingMs);
+    elements.nextTime.textContent = result.atCap || result.paused ? "等待营业" : formatDate(result.nextRecoveryAt);
+    elements.capMessage.classList.toggle("hidden", !result.atCap && !result.paused);
+    elements.capMessage.textContent = result.atCap ? "行动点已达到咖啡厅储存上限，计时已暂停。" : result.paused ? "咖啡厅当前暂停营业，计时已暂停。" : "";
+    updateCafeStatus();
     updateReminder(result);
   }
 
   function updateReminder(result) {
-    if (!result.valid || result.atCap || result.nextRecoveryAt > Date.now()) return;
+    if (!result.valid || result.atCap || result.paused || result.nextRecoveryAt > Date.now()) return;
     if (lastReminderAt === result.nextRecoveryAt) return;
     lastReminderAt = result.nextRecoveryAt;
     elements.alert.classList.remove("hidden");
@@ -199,6 +252,12 @@
       elements.levelWaitTime.textContent = "预计等待时间：无需等待";
       return;
     }
+    if (result.paused) {
+      elements.levelReadyTime.textContent = "等待恢复营业";
+      elements.levelWaitTime.textContent = "预计等待时间：暂停营业，暂时无法预计";
+      elements.levelStatus.textContent = `当前行动点不足，还需要恢复 ${result.waitAp} AP；请先恢复营业。`;
+      return;
+    }
     const waitDate = new Date(Date.now() + result.waitMs);
     elements.levelReadyTime.textContent = result.canPayNow ? "现在即可消耗" : (result.needsMultipleRuns ? "无法一次凑够，需分次消耗" : waitDate.toLocaleString("zh-CN", { hour12: false }));
     elements.levelWaitTime.textContent = `预计等待时间：${formatDuration(result.waitMs)}${result.needsMultipleRuns ? "；需求超过行动点上限，需要分次消耗" : ""}`;
@@ -238,6 +297,29 @@
     render();
   });
 
+  elements.cafeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const rank = Number(elements.cafeRank.value);
+    const comfort = Number(elements.cafeComfort.value);
+    const production = window.GameRules.cafeProduction(rank, comfort);
+    if (!production) return;
+    const previousOperating = cafeState.isOperating;
+    const isOperating = elements.cafeOperating.checked;
+    const changedAt = Date.now();
+    const previousProduction = currentCafeProduction();
+    const cafeSettingsChanged = previousOperating !== isOperating || cafeState.rank !== rank || cafeState.comfort !== comfort;
+    if (state && cafeSettingsChanged) {
+      const result = calculator.calculate({ ...state, ...previousProduction, isOperating: previousOperating, now: changedAt });
+      state = { recordedPoints: result.currentPoints, cap: production.apCap, recordedAt: changedAt };
+      saveState();
+      elements.points.value = result.currentPoints;
+      elements.recordedAt.value = localDateValue(new Date(changedAt));
+    }
+    cafeState = { rank, comfort, isOperating, changedAt: previousOperating === isOperating ? cafeState.changedAt : changedAt };
+    saveCafeState();
+    applyCafeSettings();
+  });
+
   elements.notifyButton.addEventListener("click", async () => {
     if (!("Notification" in window)) return;
     const permission = await Notification.requestPermission();
@@ -262,13 +344,16 @@
   });
 
   elements.recordedAt.value = localDateValue(new Date());
+  elements.cafeRank.value = cafeState.rank;
+  elements.cafeComfort.value = cafeState.comfort;
+  elements.cafeOperating.checked = cafeState.isOperating;
   if (state) {
     elements.points.value = state.recordedPoints;
-    elements.cap.value = state.cap;
     elements.recordedAt.value = localDateValue(new Date(state.recordedAt));
   }
   if (levelState) Object.entries(levelState).forEach(([key, value]) => { const element = elements[`level${key[0].toUpperCase()}${key.slice(1)}`]; if (element) element.value = value; });
   if (!levelState) elements.levelExpPerAp.value = rules.playerExpPerAp;
+  applyCafeSettings();
   updateNotificationStatus();
   renderRulesMeta();
   render();

@@ -21,9 +21,25 @@
       <div>
         <p class="section-kicker">自然恢复监测</p>
         <h2 id="intro-title">把下一点行动力的时间算清楚。</h2>
-        <p class="intro-copy">每 6 分钟恢复 1 点。数据只保存在当前浏览器，不会上传到服务器。</p>
+        <p class="intro-copy">咖啡厅产出随等级和舒适度变化。设置 1 号店后，恢复时间与等级规划会使用实际 AP 产率。</p>
       </div>
-      <div class="rule-badge"><strong>1 AP</strong><span>每 6 分钟</span></div>
+      <div class="rule-badge"><strong id="cafe-rate-badge">--</strong><span>咖啡厅产出</span></div>
+    </section>
+
+    <section class="cafe-settings panel" aria-labelledby="cafe-title">
+      <form id="cafe-form" class="cafe-form">
+        <div><p class="section-kicker">咖啡厅 1 号店</p><h2 id="cafe-title">舒适度与 AP 产出</h2></div>
+        <label for="cafe-rank">咖啡厅等级</label>
+        <select id="cafe-rank" required>
+          <option value="1">Rank 1</option><option value="2">Rank 2</option><option value="3">Rank 3</option><option value="4">Rank 4</option><option value="5">Rank 5</option><option value="6">Rank 6</option><option value="7">Rank 7</option><option value="8">Rank 8</option><option value="9">Rank 9</option><option value="10">Rank 10</option>
+        </select>
+        <label for="cafe-comfort">当前舒适度</label>
+        <input id="cafe-comfort" type="number" min="0" step="1" required>
+        <label class="cafe-operating-toggle" for="cafe-operating"><input id="cafe-operating" type="checkbox"> 咖啡厅营业中</label>
+        <button class="secondary-button" type="submit">更新咖啡厅</button>
+        <p>实际产出 <strong id="cafe-rate">--</strong>；舒适度上限 <strong id="cafe-comfort-limit">--</strong>；储存上限 <strong id="cafe-cap">--</strong></p>
+        <p id="cafe-status" class="status-message" role="status"></p>
+      </form>
     </section>
 
     <section class="workspace" aria-label="行动点工具">
@@ -34,8 +50,8 @@
         </div>
         <label for="points">当前行动点</label>
         <div class="input-wrap"><input id="points" name="points" type="number" min="0" step="1" inputmode="numeric" required><span>AP</span></div>
-        <label for="cap">行动点上限</label>
-        <div class="input-wrap"><input id="cap" name="cap" type="number" min="0" step="1" inputmode="numeric" value="999" required><span>AP</span></div>
+        <label for="cap">咖啡厅储存上限</label>
+        <div class="input-wrap"><input id="cap" name="cap" type="number" min="0" step="1" inputmode="numeric" value="223" readonly required><span>AP</span></div>
         <label for="recorded-at">行动点记录时间</label>
         <input id="recorded-at" name="recordedAt" type="datetime-local" required>
         <p class="field-error" id="form-error" role="alert"></p>
@@ -74,7 +90,7 @@
           <label for="level-exp">当前等级已有经验</label><input id="level-exp" type="number" min="0" step="1" required>
           <label for="level-target">目标等级</label><input id="level-target" type="number" min="1" step="1" required>
           <label for="level-ap">当前行动点</label><input id="level-ap" type="number" min="0" step="1" required>
-          <label for="level-cap">行动点上限</label><input id="level-cap" type="number" min="0" step="1" required>
+          <label for="level-cap">咖啡厅储存上限</label><input id="level-cap" type="number" min="0" step="1" readonly required>
           <label for="level-exp-per-ap">每 1 AP 获得玩家经验</label><input id="level-exp-per-ap" type="number" min="0.000001" step="any" required>
           <p class="field-error" id="level-error" role="alert"></p>
           <button class="primary-button" type="submit"><span>计算目标</span><span aria-hidden="true">→</span></button>
@@ -104,7 +120,7 @@
       </details>
     </section>
 
-    <footer><span>自然恢复：每小时 10 点</span><span>行动点工具箱 · v1</span></footer>
+    <footer><span>咖啡厅产出按舒适度比例计算</span><span>行动点工具箱 · v1</span></footer>
   </main>
   <script src="/calculator.js"></script>
   <script src="/game-rules.js"></script>

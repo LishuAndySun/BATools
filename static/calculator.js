@@ -24,34 +24,41 @@
     return points;
   }
 
-  function calculate({ recordedPoints, recordedAt, cap = DEFAULT_CAP, now = Date.now() }) {
+  function calculate({ recordedPoints, recordedAt, cap = DEFAULT_CAP, apPerHour = 10, isOperating = true, now = Date.now() }) {
     const normalizedCap = normalizeCap(cap);
     const points = normalizePoints(recordedPoints);
+    const hourlyRate = finiteNumber(apPerHour);
     const start = finiteNumber(recordedAt);
     const currentTime = finiteNumber(now);
-    if (normalizedCap === null || points === null || start === null || currentTime === null || start < 0) {
+    if (normalizedCap === null || points === null || hourlyRate === null || hourlyRate <= 0 || start === null || currentTime === null || start < 0) {
       return { valid: false, error: "请输入有效的行动点、上限和记录时间。" };
     }
 
+    const recoveryIntervalMs = 60 * MINUTE_MS / hourlyRate;
     const safeNow = Math.max(currentTime, start);
     const elapsedMs = safeNow - start;
     const available = Math.max(0, normalizedCap - points);
-    const recovered = Math.min(available, Math.floor(elapsedMs / RECOVERY_INTERVAL_MS));
+    const recovered = isOperating ? Math.min(available, Math.floor(elapsedMs / recoveryIntervalMs)) : 0;
     const currentPoints = points + recovered;
     const atCap = currentPoints >= normalizedCap;
-    const nextRecoveryAt = atCap
+    const paused = !isOperating && !atCap;
+    const nextRecoveryAt = atCap || paused
       ? null
-      : start + (recovered + 1) * RECOVERY_INTERVAL_MS;
-    const remainingMs = atCap ? 0 : Math.max(0, nextRecoveryAt - safeNow);
+      : start + (recovered + 1) * recoveryIntervalMs;
+    const remainingMs = atCap || paused ? 0 : Math.max(0, nextRecoveryAt - safeNow);
 
     return {
       valid: true,
       recordedPoints: points,
       recordedAt: start,
       cap: normalizedCap,
+      apPerHour: hourlyRate,
+      isOperating,
+      recoveryIntervalMs,
       recovered,
       currentPoints,
       atCap,
+      paused,
       elapsedMs,
       nextRecoveryAt,
       remainingMs,
