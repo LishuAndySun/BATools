@@ -1,6 +1,10 @@
 (() => {
   const calculator = window.ActionPointCalculator;
+  const levelCalculator = window.LevelCalculator;
+  const defaultRules = window.GameRules.cloneRules();
   const storageKey = "ba-action-point-state";
+  const levelStorageKey = "ba-level-target-state";
+  const rulesStorageKey = "ba-game-rules";
   const elements = {
     form: document.querySelector("#point-form"),
     points: document.querySelector("#points"),
@@ -17,8 +21,34 @@
     alert: document.querySelector("#alert-message"),
     notifyButton: document.querySelector("#notification-button"),
     notifyStatus: document.querySelector("#notification-status"),
+    levelForm: document.querySelector("#level-form"),
+    levelCurrent: document.querySelector("#level-current"),
+    levelExp: document.querySelector("#level-exp"),
+    levelTarget: document.querySelector("#level-target"),
+    levelAp: document.querySelector("#level-ap"),
+    levelCap: document.querySelector("#level-cap"),
+    levelExpPerAp: document.querySelector("#level-exp-per-ap"),
+    levelError: document.querySelector("#level-error"),
+    levelCurrentResult: document.querySelector("#level-current-result"),
+    levelTargetResult: document.querySelector("#level-target-result"),
+    levelExpResult: document.querySelector("#level-exp-result"),
+    levelRequiredExp: document.querySelector("#level-required-exp"),
+    levelRateResult: document.querySelector("#level-rate-result"),
+    levelRequiredAp: document.querySelector("#level-required-ap"),
+    levelApResult: document.querySelector("#level-ap-result"),
+    levelWaitAp: document.querySelector("#level-wait-ap"),
+    levelStatus: document.querySelector("#level-status"),
+    levelReadyTime: document.querySelector("#level-ready-time"),
+    levelWaitTime: document.querySelector("#level-wait-time"),
+    rulesMeta: document.querySelector("#rules-meta"),
+    rulesJson: document.querySelector("#exp-table-json"),
+    rulesFile: document.querySelector("#exp-table-file"),
+    applyRules: document.querySelector("#apply-rules"),
+    rulesError: document.querySelector("#rules-error"),
   };
   let state = loadState();
+  let levelState = loadStored(levelStorageKey);
+  let rules = loadRules();
   let lastReminderAt = null;
   let titleTimer = null;
   const originalTitle = document.title;
@@ -35,7 +65,18 @@
     } catch (_) { return null; }
   }
 
+  function loadStored(key) {
+    try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; }
+  }
+
+  function loadRules() {
+    const saved = loadStored(rulesStorageKey);
+    return saved && typeof saved === "object" ? { ...defaultRules, ...saved, expTable: { ...(saved.expTable || {}) } } : defaultRules;
+  }
+
   function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
+  function saveLevelState() { localStorage.setItem(levelStorageKey, JSON.stringify(levelState)); }
+  function saveRules() { localStorage.setItem(rulesStorageKey, JSON.stringify(rules)); }
 
   function formatDuration(milliseconds) {
     const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -109,11 +150,83 @@
     }
   }
 
+  function levelInput() {
+    return {
+      currentLevel: elements.levelCurrent.value,
+      currentExp: elements.levelExp.value,
+      targetLevel: elements.levelTarget.value,
+      currentAp: elements.levelAp.value,
+      apCap: elements.levelCap.value,
+      expPerAp: elements.levelExpPerAp.value,
+    };
+  }
+
+  function renderLevelEmpty() {
+    [elements.levelCurrentResult, elements.levelTargetResult, elements.levelExpResult, elements.levelRequiredExp,
+      elements.levelRateResult, elements.levelRequiredAp, elements.levelApResult, elements.levelWaitAp].forEach((element) => { element.textContent = "--"; });
+    elements.levelReadyTime.textContent = "--";
+    elements.levelWaitTime.textContent = "预计等待时间：--";
+    elements.levelStatus.classList.add("hidden");
+  }
+
+  function renderRulesMeta() {
+    const count = Object.keys(rules.expTable || {}).length;
+    elements.rulesMeta.textContent = `当前规则：1 AP = ${rules.playerExpPerAp} 玩家经验；经验表 ${count} 条；版本：${rules.expTableVersion}；来源：${rules.expTableSource}；更新时间：${rules.updatedAt}`;
+    elements.rulesJson.value = JSON.stringify(rules.expTable, null, 2);
+  }
+
+  function renderLevel() {
+    if (!levelState) { renderLevelEmpty(); return; }
+    const result = levelCalculator.calculate(levelState, rules);
+    if (!result.valid) {
+      renderLevelEmpty();
+      elements.levelError.textContent = result.error;
+      return;
+    }
+    elements.levelError.textContent = "";
+    elements.levelCurrentResult.textContent = `Lv. ${result.currentLevel}`;
+    elements.levelTargetResult.textContent = `Lv. ${result.targetLevel}`;
+    elements.levelExpResult.textContent = `${result.currentExp} / ${result.currentLevelXp}`;
+    elements.levelRequiredExp.textContent = result.reached ? "0" : result.requiredExp;
+    elements.levelRateResult.textContent = result.expPerAp;
+    elements.levelRequiredAp.textContent = `${result.requiredAp} AP`;
+    elements.levelApResult.textContent = `${result.currentAp} / ${result.apCap} AP`;
+    elements.levelWaitAp.textContent = `${result.waitAp} AP`;
+    elements.levelStatus.classList.remove("hidden");
+    if (result.reached) {
+      elements.levelStatus.textContent = `你已经达到目标等级。当前等级还剩 ${result.remainingCurrentLevel} 经验可以升级。`;
+      elements.levelReadyTime.textContent = "已达到目标";
+      elements.levelWaitTime.textContent = "预计等待时间：无需等待";
+      return;
+    }
+    const waitDate = new Date(Date.now() + result.waitMs);
+    elements.levelReadyTime.textContent = result.canPayNow ? "现在即可消耗" : (result.needsMultipleRuns ? "无法一次凑够，需分次消耗" : waitDate.toLocaleString("zh-CN", { hour12: false }));
+    elements.levelWaitTime.textContent = `预计等待时间：${formatDuration(result.waitMs)}${result.needsMultipleRuns ? "；需求超过行动点上限，需要分次消耗" : ""}`;
+    elements.levelStatus.textContent = result.canPayNow ? "当前行动点足够达到目标等级。" : `当前行动点不足，还需要自然恢复 ${result.waitAp} AP。`;
+  }
+
+  function applyRulesFromText() {
+    try {
+      const parsed = JSON.parse(elements.rulesJson.value);
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") throw new Error("经验表必须是 JSON 对象。");
+      const normalized = {};
+      for (const [level, value] of Object.entries(parsed)) {
+        if (!/^\d+$/.test(level) || Number(level) < 1 || !Number.isInteger(Number(value)) || Number(value) <= 0) throw new Error("等级键必须是正整数，经验值必须是正整数。");
+        normalized[level] = Number(value);
+      }
+      rules = { ...rules, expTable: normalized, expTableVersion: "用户自定义", expTableSource: "用户在浏览器中导入或编辑", updatedAt: new Date().toISOString() };
+      saveRules();
+      elements.rulesError.textContent = "";
+      renderRulesMeta();
+      renderLevel();
+    } catch (error) { elements.rulesError.textContent = `经验表格式错误：${error.message}`; }
+  }
+
   elements.form.addEventListener("submit", (event) => {
     event.preventDefault();
     const points = Number(elements.points.value);
     const cap = Number(elements.cap.value);
-    if (!Number.isInteger(points) || points < 0 || !Number.isInteger(cap) || cap < 0 || points > cap) {
+    if (!elements.points.value.trim() || !elements.cap.value.trim() || !Number.isInteger(points) || points < 0 || !Number.isInteger(cap) || cap < 0 || points > cap) {
       elements.error.textContent = "请输入不小于 0 的整数，且当前行动点不能超过上限。";
       return;
     }
@@ -132,13 +245,33 @@
     if (permission === "granted") elements.alert.classList.add("hidden");
   });
 
+  elements.levelForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    levelState = levelInput();
+    saveLevelState();
+    renderLevel();
+  });
+  elements.applyRules.addEventListener("click", applyRulesFromText);
+  elements.rulesFile.addEventListener("change", () => {
+    const file = elements.rulesFile.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener("load", () => { elements.rulesJson.value = reader.result; applyRulesFromText(); });
+    reader.addEventListener("error", () => { elements.rulesError.textContent = "无法读取经验表文件。"; });
+    reader.readAsText(file);
+  });
+
   elements.recordedAt.value = localDateValue(new Date());
   if (state) {
     elements.points.value = state.recordedPoints;
     elements.cap.value = state.cap;
     elements.recordedAt.value = localDateValue(new Date(state.recordedAt));
   }
+  if (levelState) Object.entries(levelState).forEach(([key, value]) => { const element = elements[`level${key[0].toUpperCase()}${key.slice(1)}`]; if (element) element.value = value; });
+  if (!levelState) elements.levelExpPerAp.value = rules.playerExpPerAp;
   updateNotificationStatus();
+  renderRulesMeta();
   render();
-  setInterval(render, 1000);
+  renderLevel();
+  setInterval(() => { render(); renderLevel(); }, 1000);
 })();

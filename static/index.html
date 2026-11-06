@@ -66,9 +66,49 @@
       <button id="notification-button" class="secondary-button" type="button">启用通知</button>
     </section>
 
+    <section class="level-tool" aria-labelledby="level-title">
+      <div class="tool-heading"><div><p class="section-kicker">等级目标计算</p><h2 id="level-title">规划到下一个目标等级</h2><p>经验表没有预设未经核实的数据，请导入或编辑后计算。</p></div><span class="step-label accent">03</span></div>
+      <div class="level-layout">
+        <form class="panel input-panel" id="level-form">
+          <label for="level-current">当前等级</label><input id="level-current" type="number" min="1" step="1" required>
+          <label for="level-exp">当前等级已有经验</label><input id="level-exp" type="number" min="0" step="1" required>
+          <label for="level-target">目标等级</label><input id="level-target" type="number" min="1" step="1" required>
+          <label for="level-ap">当前行动点</label><input id="level-ap" type="number" min="0" step="1" required>
+          <label for="level-cap">行动点上限</label><input id="level-cap" type="number" min="0" step="1" required>
+          <label for="level-exp-per-ap">每 1 AP 获得玩家经验</label><input id="level-exp-per-ap" type="number" min="0.000001" step="any" required>
+          <p class="field-error" id="level-error" role="alert"></p>
+          <button class="primary-button" type="submit"><span>计算目标</span><span aria-hidden="true">→</span></button>
+        </form>
+        <section class="panel result-panel" aria-live="polite">
+          <div class="result-grid level-result-grid">
+            <div><span>当前等级</span><strong id="level-current-result">--</strong></div>
+            <div><span>目标等级</span><strong id="level-target-result">--</strong></div>
+            <div><span>当前等级经验</span><strong id="level-exp-result">--</strong></div>
+            <div><span>还需要经验</span><strong id="level-required-exp">--</strong></div>
+            <div><span>每 1 AP 获得经验</span><strong id="level-rate-result">--</strong></div>
+            <div><span>预计还需要行动点</span><strong id="level-required-ap">--</strong></div>
+            <div><span>当前行动点</span><strong id="level-ap-result">--</strong></div>
+            <div><span>还需要等待恢复</span><strong id="level-wait-ap">--</strong></div>
+          </div>
+          <div id="level-status" class="status-message hidden"></div>
+          <div class="level-time"><span>预计可凑够时间</span><strong id="level-ready-time">--</strong><small id="level-wait-time">预计等待时间：--</small></div>
+        </section>
+      </div>
+      <details class="rules-editor panel">
+        <summary>经验表配置与数据来源</summary>
+        <p id="rules-meta" class="rules-meta"></p>
+        <p class="form-note">格式为“当前等级到下一级所需经验”，例如 <code>{"1": 100, "2": 120}</code>。导入后只保存在本浏览器。</p>
+        <textarea id="exp-table-json" rows="6" spellcheck="false" placeholder='{"1": 100, "2": 120}'></textarea>
+        <div class="rules-actions"><input id="exp-table-file" type="file" accept=".json,application/json"><button id="apply-rules" class="secondary-button" type="button">应用经验表</button></div>
+        <p id="rules-error" class="field-error" role="alert"></p>
+      </details>
+    </section>
+
     <footer><span>自然恢复：每小时 10 点</span><span>行动点工具箱 · v1</span></footer>
   </main>
   <script src="/calculator.js"></script>
+  <script src="/game-rules.js"></script>
+  <script src="/level-calculator.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

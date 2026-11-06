@@ -39,7 +39,7 @@ def main() -> None:
 
     with ReusableThreadingHTTPServer((args.host, args.port), handler) as server:
         actual_port = server.server_address[1]
-        print(f"蔚蓝档案行动点工具箱已启动")
+        print(f"蔚蓝档案工具箱已启动")
         print(f"本机访问: http://127.0.0.1:{actual_port}")
         print(f"局域网访问: http://{local_ip()}:{actual_port}")
         print("按 Ctrl+C 停止服务")
