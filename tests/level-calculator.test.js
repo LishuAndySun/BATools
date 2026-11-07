@@ -45,10 +45,18 @@ assert.equal(Object.keys(builtInRules.expTable).length, 89);
 assert.equal(builtInRules.expTable[89], 26770);
 assert.equal(calculate({ ...base, currentLevel: 1, currentExp: 0, targetLevel: 3, expPerAp: 1 }, builtInRules).requiredExp, 18);
 const { cafeProduction } = require('../static/game-rules.js');
+const { playerApCap } = require('../static/game-rules.js');
 const halfComfortProduction = cafeProduction(6, 1750);
 assert.equal(halfComfortProduction.apPerHour, 9.745);
 assert.equal(halfComfortProduction.apCap, 460);
 assert.equal(cafeProduction(6, 4000).apPerHour, 19.49);
+assert.equal(playerApCap(1), 24);
+assert.equal(playerApCap(19), 96);
+assert.equal(playerApCap(20), 100);
+assert.equal(playerApCap(21), 102);
+assert.equal(playerApCap(90), 240);
+assert.equal(playerApCap(0), null);
+assert.equal(playerApCap(91), null);
 assert.deepEqual(Object.values(builtInRules.cafeRanks).map(({ maxComfort, maxApPerHour, apCap }) => [maxComfort, maxApPerHour, apCap]), [
 	[1000, 3.83, 90], [1500, 6.36, 150], [2000, 9.29, 220], [2500, 12.62, 300], [3000, 16.36, 390],
 	[3500, 19.49, 460], [4000, 22.32, 530], [4500, 25.15, 600], [5000, 27.97, 670], [5500, 30.8, 740],

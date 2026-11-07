@@ -56,5 +56,13 @@
     };
   }
 
-  return { gameRules, cloneRules, cafeProduction };
+  function playerApCap(level) {
+    const currentLevel = Number(level);
+    if (!Number.isInteger(currentLevel) || currentLevel < 1 || currentLevel > 90) return null;
+    return currentLevel <= 20
+      ? 24 + (currentLevel - 1) * 4
+      : 100 + (currentLevel - 20) * 2;
+  }
+
+  return { gameRules, cloneRules, cafeProduction, playerApCap };
 });

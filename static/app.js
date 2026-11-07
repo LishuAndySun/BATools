@@ -6,7 +6,7 @@
   const levelStorageKey = "ba-level-target-state";
   const rulesStorageKey = "ba-game-rules";
   const cafeStorageKey = "ba-cafe-state";
-  const cafeDefaults = { rank: 1, comfort: 1000, isOperating: true, changedAt: Date.now() };
+  const cafeDefaults = { rank: 1, comfort: 1000, playerLevel: 90, isOperating: true, changedAt: Date.now() };
   const elements = {
     form: document.querySelector("#point-form"),
     points: document.querySelector("#points"),
@@ -26,6 +26,7 @@
     cafeForm: document.querySelector("#cafe-form"),
     cafeRank: document.querySelector("#cafe-rank"),
     cafeComfort: document.querySelector("#cafe-comfort"),
+    playerLevel: document.querySelector("#player-level"),
     cafeRate: document.querySelector("#cafe-rate"),
     cafeComfortLimit: document.querySelector("#cafe-comfort-limit"),
     cafeCap: document.querySelector("#cafe-cap"),
@@ -61,6 +62,11 @@
   let levelState = loadStored(levelStorageKey);
   let cafeState = { ...cafeDefaults, ...(loadStored(cafeStorageKey) || {}) };
   if (!Number.isFinite(cafeState.changedAt)) cafeState.changedAt = Date.now();
+  if (!Number.isFinite(cafeState.playerLevel)) {
+    const savedCap = Number(state && state.cap);
+    cafeState.playerLevel = Array.from({ length: 90 }, (_, index) => index + 1)
+      .reduce((closest, level) => Math.abs(window.GameRules.playerApCap(level) - savedCap) < Math.abs(window.GameRules.playerApCap(closest) - savedCap) ? level : closest, 1);
+  }
   let rules = loadRules();
   let lastReminderAt = null;
   let titleTimer = null;
@@ -104,8 +110,9 @@
     elements.cafeComfortLimit.textContent = `${production.maxComfort}`;
     elements.cafeCap.textContent = `${production.apCap} AP`;
     elements.cafeOperating.checked = cafeState.isOperating;
-    elements.cap.value = production.apCap;
-    elements.levelCap.value = production.apCap;
+    const accountApCap = window.GameRules.playerApCap(cafeState.playerLevel);
+    elements.cap.value = accountApCap;
+    elements.levelCap.value = accountApCap;
     rules.apRecoveryMinutes = 60 / production.apPerHour;
     rules.isOperating = cafeState.isOperating;
     updateCafeStatus();
@@ -153,7 +160,7 @@
   function render() {
     if (!state) { renderEmpty(); return; }
     const production = currentCafeProduction();
-    const result = calculator.calculate({ ...state, cap: production.apCap, apPerHour: production.apPerHour, isOperating: cafeState.isOperating, now: Date.now() });
+    const result = calculator.calculate({ ...state, cap: window.GameRules.playerApCap(cafeState.playerLevel), apPerHour: production.apPerHour, isOperating: cafeState.isOperating, now: Date.now() });
     if (!result.valid) { renderEmpty(); elements.error.textContent = result.error; return; }
     elements.current.textContent = result.currentPoints;
     elements.recovered.textContent = `+${result.recovered}`;
@@ -301,21 +308,25 @@
     event.preventDefault();
     const rank = Number(elements.cafeRank.value);
     const comfort = Number(elements.cafeComfort.value);
+    const playerLevel = Number(elements.playerLevel.value);
     const production = window.GameRules.cafeProduction(rank, comfort);
-    if (!production) return;
+    if (!production || !window.GameRules.playerApCap(playerLevel)) {
+      elements.cafeStatus.textContent = "请输入 1 到 90 之间的有效玩家等级和有效舒适度。";
+      return;
+    }
     const previousOperating = cafeState.isOperating;
     const isOperating = elements.cafeOperating.checked;
     const changedAt = Date.now();
     const previousProduction = currentCafeProduction();
-    const cafeSettingsChanged = previousOperating !== isOperating || cafeState.rank !== rank || cafeState.comfort !== comfort;
+    const cafeSettingsChanged = previousOperating !== isOperating || cafeState.rank !== rank || cafeState.comfort !== comfort || cafeState.playerLevel !== playerLevel;
     if (state && cafeSettingsChanged) {
       const result = calculator.calculate({ ...state, ...previousProduction, isOperating: previousOperating, now: changedAt });
-      state = { recordedPoints: result.currentPoints, cap: production.apCap, recordedAt: changedAt };
+      state = { recordedPoints: result.currentPoints, cap: window.GameRules.playerApCap(playerLevel), recordedAt: changedAt };
       saveState();
       elements.points.value = result.currentPoints;
       elements.recordedAt.value = localDateValue(new Date(changedAt));
     }
-    cafeState = { rank, comfort, isOperating, changedAt: previousOperating === isOperating ? cafeState.changedAt : changedAt };
+    cafeState = { rank, comfort, playerLevel, isOperating, changedAt: previousOperating === isOperating ? cafeState.changedAt : changedAt };
     saveCafeState();
     applyCafeSettings();
   });
@@ -346,6 +357,7 @@
   elements.recordedAt.value = localDateValue(new Date());
   elements.cafeRank.value = cafeState.rank;
   elements.cafeComfort.value = cafeState.comfort;
+  elements.playerLevel.value = cafeState.playerLevel;
   elements.cafeOperating.checked = cafeState.isOperating;
   if (state) {
     elements.points.value = state.recordedPoints;
